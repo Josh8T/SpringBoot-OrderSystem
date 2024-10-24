@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Order Cart</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .nav {
+            margin-bottom: 20px;
+        }
+        .nav a {
+            margin-right: 20px;
+            text-decoration: none;
+            color: #007bff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .total {
+            text-align: right;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Products</a>
+        <a href="cart.html">Order Cart</a>
+    </div>
+
+    <h2>Order Cart</h2>
+    <table id="cartTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <div class="total">
+        Final Total: $<span id="finalTotal">0.00</span>
+    </div>
+
+    <button onclick="placeOrder()" style="margin-top: 20px;">Place Order</button>
+    <script>
+        let currentCartId = 1;
+
+        // Create initial cart when page loads
+        fetch('/api/cart', {
+            method: 'POST'
+        });
+
+        async function loadCart() {
+            try {
+                const response = await fetch(`/api/cart/${currentCartId}`);
+                const cart = await response.json();
+                
+                const tbody = document.querySelector('#cartTable tbody');
+                tbody.innerHTML = '';
+                
+                if (cart.status === "PENDING") {
+                    cart.items.forEach(item => {
+                        const row = `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.type}</td>
+                                <td>${item.price.toFixed(2)}</td>
+                                <td>${item.quantity}</td>
+                                <td>${item.total.toFixed(2)}</td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                    document.getElementById('finalTotal').textContent = cart.totalAmount.toFixed(2);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function placeOrder() {
+            try {
+                const response = await fetch(`/api/cart/${currentCartId}`);
+                const cart = await response.json();
+
+                if (!cart.items || cart.items.length === 0) {
+                    alert('Cannot place order: Cart is empty');
+                    return;
+                }
+
+                const placeOrderResponse = await fetch(`/api/cart/${currentCartId}/place`, {
+                    method: 'POST'
+                });
+                
+                if (placeOrderResponse.ok) {
+                    alert('Order placed successfully!');
+                    currentCartId++;
+                    
+                    // Create new cart
+                    await fetch('/api/cart', {
+                        method: 'POST'
+                    });
+                    
+                    loadCart();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        loadCart();
+    </script>
+  </body>
+</html>

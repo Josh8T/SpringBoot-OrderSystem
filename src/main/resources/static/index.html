@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Product Order System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .nav {
+            margin-bottom: 20px;
+        }
+        .nav a {
+            margin-right: 20px;
+            text-decoration: none;
+            color: #007bff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        form {
+            margin-top: 20px;
+        }
+        input, button {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .add-to-order {
+            background-color: #28a745;
+        }
+        .add-to-order:hover {
+            background-color: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="index.html">Products</a>
+        <a href="cart.html">Order Cart</a>
+    </div>
+
+    <h2>Add New Product</h2>
+    <form id="productForm">
+        <div>
+            <label>Name:</label><br>
+            <input type="text" id="name" required>
+        </div>
+        <div>
+            <label>Type:</label><br>
+            <input type="text" id="type" required>
+        </div>
+        <div>
+            <label>Price:</label><br>
+            <input type="number" id="price" step="0.01" required>
+        </div>
+        <button type="submit">Add Product</button>
+    </form>
+      <h2>Products List</h2>
+      <table id="productTable">
+          <thead>
+              <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Price</th>
+                  <th>Action</th>
+              </tr>
+          </thead>
+          <tbody>
+          </tbody>
+      </table>
+        <script>
+
+            document.getElementById('productForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+          
+                const product = {
+                    name: document.getElementById('name').value,
+                    type: document.getElementById('type').value,
+                    price: parseFloat(document.getElementById('price').value)
+                };
+
+                try {
+                    const response = await fetch('/api/products', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(product)
+                    });
+              
+                    if (response.ok) {
+                        loadProducts();
+                        e.target.reset();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            });
+
+            async function loadProducts() {
+                try {
+                    const response = await fetch('/api/products');
+                    const products = await response.json();
+                
+                    const tbody = document.querySelector('#productTable tbody');
+                    tbody.innerHTML = '';
+                
+                    products.content.forEach(product => {
+                        const row = `
+                            <tr>
+                                <td>${product.name}</td>
+                                <td>${product.type}</td>
+                                <td>${product.price.toFixed(2)}</td>
+                                <td>
+                                    <button class="add-to-order" onclick="addToOrder(${product.id})">Add to Order</button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.innerHTML += row;
+                    });
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+
+
+            let currentCartId = 1;
+
+            async function addToOrder(productId) {
+                try {
+                    // Check if current cart is completed
+                    const cartResponse = await fetch(`/api/cart/${currentCartId}`);
+                    const cart = await cartResponse.json();
+                
+                    if (cart.status === "COMPLETE") {
+                        currentCartId++;
+                    }
+
+                    const quantity = prompt("Enter quantity:", "1");
+                    if (quantity === null || quantity.trim() === "") return;
+
+                    const response = await fetch(`/api/cart/${currentCartId}/items?productId=${productId}&quantity=${quantity}`, {
+                        method: 'POST'
+                    });
+                
+                    if (response.ok) {
+                        alert('Product added to cart!');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }
+            // Load products and initialize cart when page loads
+            loadProducts();
+            initializeCart();
+        </script>
+    </body>
+  </html>
